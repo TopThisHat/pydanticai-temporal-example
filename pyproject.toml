@@ -51,7 +51,14 @@ disallow_untyped_defs = true
 
 [dependency-groups]
 dev = [
+    "hypothesis>=6.168.5",
+    "mutmut>=3.8.0",
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",
     "ruff>=0.14.9",
 ]
+
+[tool.mutmut]
+# Mutation testing is scoped to the pure model logic; see docs/property-testing-in-the-age-of-ai.md
+source_paths = ["src/deep_research_poc/models.py"]
+pytest_add_cli_args_test_selection = ["tests/test_properties.py", "tests/test_plan_state_machine.py"]

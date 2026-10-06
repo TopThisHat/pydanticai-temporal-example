@@ -53,3 +53,9 @@ dmypy.json
 
 # Temporal
 .temporal/
+
+# Hypothesis example database
+.hypothesis/
+
+# mutmut working directory
+mutants/

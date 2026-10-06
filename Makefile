@@ -1,6 +1,6 @@
 # Makefile for deep-research-poc
 
-.PHONY: help install dev-install format lint type-check test test-cov clean run-worker run-temporal
+.PHONY: help install dev-install format lint type-check test test-cov mutate clean run-worker run-temporal
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -28,6 +28,9 @@ type-check: ## Run type checking with mypy
 
 test: ## Run tests
 	uv run pytest tests -v
+
+mutate: ## Mutation-test the model logic (see docs/property-testing-in-the-age-of-ai.md)
+	uv run mutmut run && uv run mutmut results
 
 test-cov: ## Run tests with coverage
 	uv run pytest tests --cov=deep_research_poc --cov-report=html --cov-report=term
