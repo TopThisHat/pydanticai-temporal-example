@@ -93,11 +93,11 @@ class ResearchRequest(BaseModel):
         description="The research question or topic to investigate",
         examples=["Who are the owners of the Dallas Mavericks?"],
     )
-    max_iterations: int = Field(
-        default=3,
+    max_iterations: int | None = Field(
+        default=None,
         ge=1,
         le=10,
-        description="Maximum number of research iterations",
+        description="Maximum number of research iterations (defaults from depth)",
     )
     depth: str = Field(
         default="standard",

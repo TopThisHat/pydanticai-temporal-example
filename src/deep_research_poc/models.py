@@ -126,11 +126,14 @@ class ResearchQuery(BaseModel):
         max_length=2000,
         description="The research question or topic to investigate",
     )
-    max_iterations: int = Field(
-        default=3,
+    max_iterations: int | None = Field(
+        default=None,
         ge=1,
         le=10,
-        description="Maximum number of research iterations",
+        description=(
+            "Maximum number of research iterations. "
+            "Defaults to the value implied by 'depth' when not set."
+        ),
     )
     depth: str = Field(
         default="standard",
@@ -144,12 +147,20 @@ class ResearchQuery(BaseModel):
 
     @model_validator(mode="after")
     def adjust_iterations_by_depth(self) -> "ResearchQuery":
-        """Adjust max_iterations based on depth if not explicitly set."""
+        """Fill in max_iterations from depth when the caller did not set it.
+
+        An explicit value is always respected, including 3.
+        """
         depth_defaults = {"quick": 1, "standard": 3, "deep": 5}
-        # Only adjust if using default value
-        if self.max_iterations == 3 and self.depth != "standard":
+        if self.max_iterations is None:
             object.__setattr__(self, "max_iterations", depth_defaults[self.depth])
         return self
+
+    @property
+    def iterations(self) -> int:
+        """max_iterations after validation, typed as the int it always is."""
+        assert self.max_iterations is not None
+        return self.max_iterations
 
 
 class ResearchStep(BaseModel):

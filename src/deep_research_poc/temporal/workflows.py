@@ -138,7 +138,7 @@ class DeepResearchWorkflow:
         """
         start_time = workflow.now()
         query = input_data.research_query
-        max_iterations = query.max_iterations
+        max_iterations = query.iterations
 
         workflow.logger.info(
             "multi_agent_workflow_started",

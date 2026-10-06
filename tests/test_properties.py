@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import re
 
-import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -139,25 +138,22 @@ def test_iterations_always_within_bounds(max_iterations: int, depth: str) -> Non
     assert 1 <= q.max_iterations <= 10
 
 
-@given(st.integers(min_value=1, max_value=10).filter(lambda n: n != 3), depths)
+@given(st.integers(min_value=1, max_value=10), depths)
 def test_explicit_iterations_are_respected(max_iterations: int, depth: str) -> None:
+    """This failed on max_iterations=3, depth='deep' before 'unset' was made
+    representable as None; see docs/property-testing-in-the-age-of-ai.md."""
     q = ResearchQuery(query="q", max_iterations=max_iterations, depth=depth)
     assert q.max_iterations == max_iterations
 
 
-@pytest.mark.xfail(
-    reason="Design smell found by the property above: 3 is used as 'unset', so an "
-    "explicit max_iterations=3 with depth='deep' is silently overridden to 5.",
-    strict=True,
-)
 @given(depths)
-def test_explicit_three_is_respected(depth: str) -> None:
-    q = ResearchQuery(query="q", max_iterations=3, depth=depth)
-    assert q.max_iterations == 3
+def test_unset_iterations_follow_depth(depth: str) -> None:
+    q = ResearchQuery(query="q", depth=depth)
+    assert q.iterations == {"quick": 1, "standard": 3, "deep": 5}[depth]
 
 
-@given(st.integers(min_value=1, max_value=10), depths)
-def test_query_survives_json_round_trip(max_iterations: int, depth: str) -> None:
+@given(st.one_of(st.none(), st.integers(min_value=1, max_value=10)), depths)
+def test_query_survives_json_round_trip(max_iterations: int | None, depth: str) -> None:
     """Temporal serialises these models; a lossy round-trip would corrupt history."""
     q = ResearchQuery(query="q", max_iterations=max_iterations, depth=depth)
     assert ResearchQuery.model_validate_json(q.model_dump_json()) == q

@@ -246,20 +246,31 @@ def test_explicit_iterations_are_respected(max_iterations, depth):
 
 It fails instantly, on `max_iterations=3, depth="deep"`, and you can see why from the source. The validator can't tell "the user asked for 3" from "the user didn't say." It uses the value 3 as a sentinel for *unset*. A user who explicitly wants three deep iterations gets five.
 
-Is that a bug? Arguably it's a reasonable heuristic. But it's a decision that was never made; the agent reached for the simplest thing that satisfied the docstring, and the docstring was ambiguous. The honest fix is to make `max_iterations` optional (`int | None = None`) so "unset" is representable. I haven't made it yet, because it changes the API. What I've done instead is pin the behaviour so it can't change silently:
+Is that a bug? Arguably it's a reasonable heuristic. But it's a decision that was never made; the agent reached for the simplest thing that satisfied the docstring, and the docstring was ambiguous. The real problem is that "unset" wasn't representable, so the code borrowed a real value to mean it.
+
+The fix is to make the absence a real state:
 
 ```python
-@pytest.mark.xfail(
-    reason="Design smell found by the property above: 3 is used as 'unset', so an "
-    "explicit max_iterations=3 with depth='deep' is silently overridden to 5.",
-    strict=True,
-)
-@given(depths)
-def test_explicit_three_is_respected(depth):
-    ...
+max_iterations: int | None = Field(default=None, ge=1, le=10, ...)
+
+@model_validator(mode="after")
+def adjust_iterations_by_depth(self) -> "ResearchQuery":
+    depth_defaults = {"quick": 1, "standard": 3, "deep": 5}
+    if self.max_iterations is None:
+        object.__setattr__(self, "max_iterations", depth_defaults[self.depth])
+    return self
 ```
 
-`strict=True` means the day someone fixes it, this test starts passing, pytest flags the unexpected pass, and they delete the `xfail`. The test suite now carries the design debt in a form that's impossible to forget.
+Now an explicit 3 is a 3, the API schema defaults to `None` so depth still drives the default for callers who don't care, and the property passes for every value. I added its mirror image too, "unset follows depth," so both halves of the contract are pinned:
+
+```python
+@given(depths)
+def test_unset_iterations_follow_depth(depth):
+    q = ResearchQuery(query="q", depth=depth)
+    assert q.iterations == {"quick": 1, "standard": 3, "deep": 5}[depth]
+```
+
+That's a two-line change to the model and a one-line change to the API, and I wouldn't have made it without the test, because the old behaviour looked fine in every example anyone had thought to write.
 
 This is the part of property testing I didn't expect: it doesn't just find bugs, it forces the ambiguous questions out of the code and onto the table, where a person can answer them.
 
